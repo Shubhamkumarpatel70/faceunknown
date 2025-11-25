@@ -458,6 +458,12 @@ const VideoChat = () => {
   };
 
   const handleLeave = async () => {
+    // Clear connection timeout
+    if (connectionTimeoutRef.current) {
+      clearTimeout(connectionTimeoutRef.current);
+      connectionTimeoutRef.current = null;
+    }
+    
     if (socketRef.current) {
       socketRef.current.emit('leave');
     }
