@@ -115,8 +115,16 @@ const VideoChat = () => {
       clearTimeout(connectionTimeoutRef.current);
     }
     connectionTimeoutRef.current = setTimeout(() => {
-      if (!matched && connecting) {
+      // Check if still connecting and not matched
+      if (socketRef.current && !socketRef.current.partnerId) {
         console.log('No match found within 10 seconds, redirecting to dashboard...');
+        if (socketRef.current) {
+          socketRef.current.emit('leave');
+          socketRef.current.disconnect();
+        }
+        if (localStreamRef.current) {
+          localStreamRef.current.getTracks().forEach(track => track.stop());
+        }
         navigate('/dashboard');
       }
     }, 10000); // 10 seconds
