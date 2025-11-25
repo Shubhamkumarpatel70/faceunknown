@@ -193,8 +193,27 @@ const VideoChat = () => {
 
     // Handle remote stream
     pc.ontrack = (event) => {
-      if (remoteVideoRef.current) {
-        remoteVideoRef.current.srcObject = event.streams[0];
+      console.log('Received remote track:', event.track.kind, event.streams);
+      if (event.streams && event.streams.length > 0) {
+        const remoteStream = event.streams[0];
+        console.log('Setting remote stream:', remoteStream);
+        if (remoteVideoRef.current) {
+          remoteVideoRef.current.srcObject = remoteStream;
+          // Force video element to play
+          remoteVideoRef.current.play().catch(err => {
+            console.error('Error playing remote video:', err);
+          });
+        }
+      } else if (event.track) {
+        // Fallback: create a new stream from the track
+        const remoteStream = new MediaStream([event.track]);
+        console.log('Creating stream from track:', remoteStream);
+        if (remoteVideoRef.current) {
+          remoteVideoRef.current.srcObject = remoteStream;
+          remoteVideoRef.current.play().catch(err => {
+            console.error('Error playing remote video:', err);
+          });
+        }
       }
     };
 
