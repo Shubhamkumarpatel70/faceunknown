@@ -64,7 +64,7 @@ const ProfileCompletion = () => {
   const handleSubmit = async (e) => {
     e.preventDefault();
     try {
-      const response = await axios.patch('API_BASE_URL/api/auth/profile', formData);
+      const response = await axios.patch(`${API_BASE_URL}/api/auth/profile`, formData);
       await fetchUserDetails();
       
       // Recalculate completion
