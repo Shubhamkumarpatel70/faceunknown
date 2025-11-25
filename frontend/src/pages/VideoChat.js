@@ -99,7 +99,11 @@ const VideoChat = () => {
   useEffect(() => {
     // Initialize socket connection
     const token = localStorage.getItem('token');
-    const newSocket = io(API_BASE_URL, {
+    // Use same domain in production, API_BASE_URL in development
+    const socketUrl = process.env.NODE_ENV === 'production' 
+      ? window.location.origin 
+      : API_BASE_URL;
+    const newSocket = io(socketUrl, {
       auth: { token }
     });
 
