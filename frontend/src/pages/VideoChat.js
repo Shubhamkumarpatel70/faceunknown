@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import io from 'socket.io-client';
 import axios from 'axios';
 import AuthContext from '../context/AuthContext';
+import API_BASE_URL from '../config/api';
 import './VideoChat.css';
 
 const VideoChat = () => {
@@ -97,7 +98,7 @@ const VideoChat = () => {
   useEffect(() => {
     // Initialize socket connection
     const token = localStorage.getItem('token');
-    const newSocket = io('http://localhost:5000', {
+    const newSocket = io(API_BASE_URL, {
       auth: { token }
     });
 
@@ -374,7 +375,7 @@ const VideoChat = () => {
       }
 
       const response = await axios.post(
-        'http://localhost:5000/api/reports',
+        `${API_BASE_URL}/api/reports`,
         {
           reportedUserId: currentPartnerId.toString(),
           reason: 'Inappropriate behavior'

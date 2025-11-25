@@ -38,7 +38,7 @@ const Register = () => {
 
     try {
       const { confirmPassword, ...registerData } = formData;
-      await axios.post('http://localhost:5000/api/auth/register', registerData);
+      await axios.post(`${API_BASE_URL}/api/auth/register`, registerData);
       // Redirect to login after successful registration
       navigate('/login', { state: { message: 'Registration successful! Please login.' } });
     } catch (err) {

@@ -20,7 +20,7 @@ const Statistics = () => {
 
   const fetchStats = async () => {
     try {
-      const response = await axios.get('http://localhost:5000/api/users/stats');
+      const response = await axios.get('API_BASE_URL/api/users/stats');
       setStats(response.data);
     } catch (error) {
       console.error('Error fetching stats:', error);
@@ -31,7 +31,7 @@ const Statistics = () => {
 
   const fetchUserActivity = async () => {
     try {
-      const response = await axios.get('http://localhost:5000/api/users');
+      const response = await axios.get('API_BASE_URL/api/users');
       const users = response.data;
       
       // Calculate activity metrics

@@ -2,6 +2,7 @@ import React, { useState, useEffect, useContext } from 'react';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import AuthContext from '../context/AuthContext';
+import API_BASE_URL from '../config/api';
 import './ProfileCompletion.css';
 
 const ProfileCompletion = () => {
@@ -33,7 +34,7 @@ const ProfileCompletion = () => {
 
   const fetchUserDetails = async () => {
     try {
-      const response = await axios.get('http://localhost:5000/api/auth/me');
+      const response = await axios.get('API_BASE_URL/api/auth/me');
       setUserDetails(response.data.user);
     } catch (error) {
       console.error('Error fetching user details:', error);
@@ -63,7 +64,7 @@ const ProfileCompletion = () => {
   const handleSubmit = async (e) => {
     e.preventDefault();
     try {
-      const response = await axios.patch('http://localhost:5000/api/auth/profile', formData);
+      const response = await axios.patch('API_BASE_URL/api/auth/profile', formData);
       await fetchUserDetails();
       
       // Recalculate completion

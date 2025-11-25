@@ -28,7 +28,7 @@ const ManageUsers = () => {
 
   const fetchUsers = async () => {
     try {
-      const response = await axios.get('http://localhost:5000/api/users');
+      const response = await axios.get('API_BASE_URL/api/users');
       setUsers(response.data);
     } catch (error) {
       setError('Failed to fetch users');
@@ -40,7 +40,7 @@ const ManageUsers = () => {
 
   const fetchStats = async () => {
     try {
-      const response = await axios.get('http://localhost:5000/api/users/stats');
+      const response = await axios.get('API_BASE_URL/api/users/stats');
       setStats(response.data);
     } catch (error) {
       console.error('Error fetching stats:', error);
@@ -102,7 +102,7 @@ const ManageUsers = () => {
 
   const handleRoleChange = async (userId, newRole) => {
     try {
-      await axios.patch(`http://localhost:5000/api/users/${userId}/role`, { role: newRole });
+      await axios.patch(`API_BASE_URL/api/users/${userId}/role`, { role: newRole });
       await fetchUsers();
       await fetchStats();
     } catch (error) {
@@ -117,7 +117,7 @@ const ManageUsers = () => {
     }
 
     try {
-      await axios.delete(`http://localhost:5000/api/users/${userId}`);
+      await axios.delete(`API_BASE_URL/api/users/${userId}`);
       await fetchUsers();
       await fetchStats();
     } catch (error) {

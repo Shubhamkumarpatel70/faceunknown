@@ -2,6 +2,7 @@ import React, { useState, useEffect, useContext } from 'react';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import AuthContext from '../context/AuthContext';
+import API_BASE_URL from '../config/api';
 import ManageUsers from '../components/ManageUsers';
 import Statistics from '../components/Statistics';
 import RestrictedWords from '../components/RestrictedWords';
@@ -34,7 +35,7 @@ const Dashboard = () => {
 
   const checkProfileCompletion = async () => {
     try {
-      const response = await axios.get('http://localhost:5000/api/auth/me');
+      const response = await axios.get(`${API_BASE_URL}/api/auth/me`);
       const userData = response.data.user;
       
       let completed = 0;
@@ -56,7 +57,7 @@ const Dashboard = () => {
 
   const fetchOnlineCount = async () => {
     try {
-      const response = await axios.get('http://localhost:5000/api/users/online');
+      const response = await axios.get(`${API_BASE_URL}/api/users/online`);
       setOnlineCount(response.data.count);
     } catch (error) {
       console.error('Error fetching online count:', error);
@@ -67,7 +68,7 @@ const Dashboard = () => {
 
   const fetchUserDetails = async () => {
     try {
-      const response = await axios.get('http://localhost:5000/api/auth/me');
+      const response = await axios.get(`${API_BASE_URL}/api/auth/me`);
       setUserDetails(response.data.user);
       setEditFormData({
         name: response.data.user.name || '',
@@ -96,7 +97,7 @@ const Dashboard = () => {
     setEditError('');
     setEditSuccess('');
     try {
-      const response = await axios.patch('http://localhost:5000/api/auth/profile', editFormData);
+      const response = await axios.patch(`${API_BASE_URL}/api/auth/profile`, editFormData);
       setUserDetails(response.data.user);
       setIsEditing(false);
       setEditSuccess('Profile updated successfully!');

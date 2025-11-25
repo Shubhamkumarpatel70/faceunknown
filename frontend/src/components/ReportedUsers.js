@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
+import API_BASE_URL from '../config/api';
 import './ReportedUsers.css';
 
 const ReportedUsers = () => {
@@ -15,7 +16,7 @@ const ReportedUsers = () => {
 
   const fetchReportedUsers = async () => {
     try {
-      const response = await axios.get('http://localhost:5000/api/reports/reported-users');
+      const response = await axios.get('API_BASE_URL/api/reports/reported-users');
       setReportedUsers(response.data);
     } catch (error) {
       console.error('Error fetching reported users:', error);

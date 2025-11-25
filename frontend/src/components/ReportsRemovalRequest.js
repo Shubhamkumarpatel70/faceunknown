@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
+import API_BASE_URL from '../config/api';
 import './ReportsRemovalRequest.css';
 
 const ReportsRemovalRequest = () => {
@@ -16,7 +17,7 @@ const ReportsRemovalRequest = () => {
 
   const fetchRequests = async () => {
     try {
-      const response = await axios.get('http://localhost:5000/api/reports/removal-requests');
+      const response = await axios.get('API_BASE_URL/api/reports/removal-requests');
       setRequests(response.data);
     } catch (error) {
       console.error('Error fetching removal requests:', error);
@@ -32,7 +33,7 @@ const ReportsRemovalRequest = () => {
     }
 
     try {
-      const response = await axios.patch(`http://localhost:5000/api/reports/removal-requests/${requestId}`, {
+      const response = await axios.patch(`API_BASE_URL/api/reports/removal-requests/${requestId}`, {
         status
       });
       setSuccess(`Request ${status} successfully`);

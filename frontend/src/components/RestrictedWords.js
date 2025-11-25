@@ -15,7 +15,7 @@ const RestrictedWords = () => {
 
   const fetchWords = async () => {
     try {
-      const response = await axios.get('http://localhost:5000/api/restricted-words');
+      const response = await axios.get('API_BASE_URL/api/restricted-words');
       setWords(response.data);
     } catch (error) {
       console.error('Error fetching restricted words:', error);
@@ -36,7 +36,7 @@ const RestrictedWords = () => {
     }
 
     try {
-      const response = await axios.post('http://localhost:5000/api/restricted-words', {
+      const response = await axios.post('API_BASE_URL/api/restricted-words', {
         word: newWord.trim()
       });
       setWords([response.data, ...words]);
@@ -54,7 +54,7 @@ const RestrictedWords = () => {
     }
 
     try {
-      await axios.delete(`http://localhost:5000/api/restricted-words/${id}`);
+      await axios.delete(`API_BASE_URL/api/restricted-words/${id}`);
       setWords(words.filter(word => word._id !== id));
       setSuccess('Word deleted successfully');
       setTimeout(() => setSuccess(''), 3000);
