@@ -224,6 +224,12 @@ const VideoChat = () => {
 
   const handleMatched = async ({ partnerId, partnerSocketId, partnerName, isOfferer = true }) => {
     try {
+      // Clear connection timeout since we found a match
+      if (connectionTimeoutRef.current) {
+        clearTimeout(connectionTimeoutRef.current);
+        connectionTimeoutRef.current = null;
+      }
+      
       setMatched(true);
       setPartnerLeft(false);
       setConnecting(false);
