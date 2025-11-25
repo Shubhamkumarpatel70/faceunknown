@@ -34,7 +34,7 @@ const ProfileCompletion = () => {
 
   const fetchUserDetails = async () => {
     try {
-      const response = await axios.get('API_BASE_URL/api/auth/me');
+      const response = await axios.get(`${API_BASE_URL}/api/auth/me`);
       setUserDetails(response.data.user);
     } catch (error) {
       console.error('Error fetching user details:', error);
