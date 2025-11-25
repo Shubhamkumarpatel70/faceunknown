@@ -39,11 +39,19 @@ const Register = () => {
 
     try {
       const { confirmPassword, ...registerData } = formData;
-      await axios.post(`${API_BASE_URL}/api/auth/register`, registerData);
+      const url = API_BASE_URL ? `${API_BASE_URL}/api/auth/register` : '/api/auth/register';
+      const response = await axios.post(url, registerData, {
+        headers: {
+          'Content-Type': 'application/json'
+        }
+      });
+      console.log('Registration successful:', response.data);
       // Redirect to login after successful registration
       navigate('/login', { state: { message: 'Registration successful! Please login.' } });
     } catch (err) {
-      setError(err.response?.data?.message || 'Registration failed');
+      console.error('Registration error:', err);
+      const errorMessage = err.response?.data?.message || err.message || 'Registration failed';
+      setError(errorMessage);
     }
   };
 
