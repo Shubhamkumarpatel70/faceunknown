@@ -25,6 +25,7 @@ const VideoChat = () => {
   const [partnerName, setPartnerName] = useState(null);
   const [reportSuccess, setReportSuccess] = useState('');
   const [reportError, setReportError] = useState('');
+  const connectionTimeoutRef = useRef(null);
 
   const localVideoRef = useRef(null);
   const remoteVideoRef = useRef(null);
@@ -108,6 +109,17 @@ const VideoChat = () => {
     });
 
     socketRef.current = newSocket;
+    
+    // Set connection timeout - redirect to dashboard if no match in 10 seconds
+    if (connectionTimeoutRef.current) {
+      clearTimeout(connectionTimeoutRef.current);
+    }
+    connectionTimeoutRef.current = setTimeout(() => {
+      if (!matched && connecting) {
+        console.log('No match found within 10 seconds, redirecting to dashboard...');
+        navigate('/dashboard');
+      }
+    }, 10000); // 10 seconds
     setSocket(newSocket);
 
     // Get user media
