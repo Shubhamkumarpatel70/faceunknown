@@ -7,7 +7,18 @@ const router = express.Router();
 // Register
 router.post('/register', async (req, res) => {
   try {
+    console.log('Registration request received:', { 
+      username: req.body.username, 
+      email: req.body.email,
+      hasPassword: !!req.body.password 
+    });
+    
     const { username, name, email, password, gender, dateOfBirth, role } = req.body;
+
+    // Validate required fields
+    if (!username || !email || !password) {
+      return res.status(400).json({ message: 'Username, email, and password are required' });
+    }
 
     // Check if user exists
     let user = await User.findOne({ $or: [{ email }, { username }] });
@@ -27,6 +38,7 @@ router.post('/register', async (req, res) => {
     });
 
     await user.save();
+    console.log('User created successfully:', user._id);
 
     // Generate token
     const token = jwt.sign(
@@ -49,7 +61,8 @@ router.post('/register', async (req, res) => {
       }
     });
   } catch (error) {
-    res.status(500).json({ message: error.message });
+    console.error('Registration error:', error);
+    res.status(500).json({ message: error.message || 'Registration failed' });
   }
 });
 

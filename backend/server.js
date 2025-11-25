@@ -17,8 +17,12 @@ const io = socketIo(server, {
 });
 
 // Middleware
-app.use(cors());
+app.use(cors({
+  origin: process.env.CORS_ORIGIN || process.env.FRONTEND_URL || "*",
+  credentials: true
+}));
 app.use(express.json());
+app.use(express.urlencoded({ extended: true }));
 
 // API Routes
 app.use('/api/auth', require('./routes/auth'));
@@ -37,7 +41,12 @@ if (process.env.NODE_ENV === 'production') {
   
   // The "catchall" handler: for any request that doesn't
   // match one above, send back React's index.html file.
+  // IMPORTANT: This must be AFTER all API routes
   app.get('*', (req, res) => {
+    // Don't serve index.html for API routes
+    if (req.path.startsWith('/api/')) {
+      return res.status(404).json({ message: 'API route not found' });
+    }
     res.sendFile(path.join(__dirname, '../frontend/build/index.html'));
   });
 }
