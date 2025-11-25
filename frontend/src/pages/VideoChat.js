@@ -276,14 +276,7 @@ const VideoChat = () => {
       socketRef.current.partnerId = partnerId;
 
       const pc = createPeerConnection();
-
-      // Add local tracks to peer connection
-      if (localStreamRef.current) {
-        localStreamRef.current.getTracks().forEach(track => {
-          console.log('Adding local track to peer connection:', track.kind);
-          pc.addTrack(track, localStreamRef.current);
-        });
-      }
+      // Note: createPeerConnection() already adds local tracks, so no need to add them again
 
       // Only the offerer creates and sends the offer
       if (isOfferer && pc.signalingState === 'stable') {
