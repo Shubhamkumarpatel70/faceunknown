@@ -7,7 +7,8 @@
     "react-dom": "^18.2.0",
     "react-router-dom": "^6.16.0",
     "socket.io-client": "^4.6.1",
-    "axios": "^1.5.0"
+    "axios": "^1.5.0",
+    "react-scripts": "5.0.1"
   },
   "scripts": {
     "start": "react-scripts start",
@@ -15,9 +16,7 @@
     "test": "react-scripts test",
     "eject": "react-scripts eject"
   },
-  "devDependencies": {
-    "react-scripts": "5.0.1"
-  },
+  "devDependencies": {},
   "browserslist": {
     "production": [
       ">0.2%",
