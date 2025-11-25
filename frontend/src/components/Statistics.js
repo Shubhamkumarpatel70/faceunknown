@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
+import API_BASE_URL from '../config/api';
 import './Statistics.css';
 
 const Statistics = () => {
@@ -20,7 +21,7 @@ const Statistics = () => {
 
   const fetchStats = async () => {
     try {
-      const response = await axios.get('API_BASE_URL/api/users/stats');
+      const response = await axios.get(`${API_BASE_URL}/api/users/stats`);
       setStats(response.data);
     } catch (error) {
       console.error('Error fetching stats:', error);
@@ -31,7 +32,7 @@ const Statistics = () => {
 
   const fetchUserActivity = async () => {
     try {
-      const response = await axios.get('API_BASE_URL/api/users');
+      const response = await axios.get(`${API_BASE_URL}/api/users`);
       const users = response.data;
       
       // Calculate activity metrics
