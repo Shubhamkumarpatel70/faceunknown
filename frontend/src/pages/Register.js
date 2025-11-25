@@ -16,11 +16,62 @@ const Register = () => {
     confirmPassword: ''
   });
   const [error, setError] = useState('');
+  const [usernameError, setUsernameError] = useState('');
+  const [checkingUsername, setCheckingUsername] = useState(false);
+  const [usernameAvailable, setUsernameAvailable] = useState(null);
   const { login } = useContext(AuthContext);
   const navigate = useNavigate();
+  
+  const usernameCheckTimeoutRef = React.useRef(null);
 
   const handleChange = (e) => {
-    setFormData({ ...formData, [e.target.name]: e.target.value });
+    const { name, value } = e.target;
+    setFormData({ ...formData, [name]: value });
+    
+    // Check username availability in real-time
+    if (name === 'username' && value.length >= 3) {
+      // Clear previous timeout
+      if (usernameCheckTimeoutRef.current) {
+        clearTimeout(usernameCheckTimeoutRef.current);
+      }
+      
+      // Set loading state
+      setCheckingUsername(true);
+      setUsernameError('');
+      setUsernameAvailable(null);
+      
+      // Debounce: wait 500ms after user stops typing
+      usernameCheckTimeoutRef.current = setTimeout(async () => {
+        try {
+          const url = API_BASE_URL ? `${API_BASE_URL}/api/users/check-username` : '/api/users/check-username';
+          const response = await axios.post(url, { username: value }, {
+            headers: {
+              'Content-Type': 'application/json'
+            }
+          });
+          
+          if (response.data.available) {
+            setUsernameAvailable(true);
+            setUsernameError('');
+          } else {
+            setUsernameAvailable(false);
+            setUsernameError('Username is already taken');
+          }
+        } catch (err) {
+          // If error, assume username might be available (don't block user)
+          console.error('Username check error:', err);
+          setUsernameAvailable(null);
+        } finally {
+          setCheckingUsername(false);
+        }
+      }, 500);
+    } else if (name === 'username' && value.length > 0 && value.length < 3) {
+      setUsernameError('Username must be at least 3 characters');
+      setUsernameAvailable(false);
+    } else if (name === 'username' && value.length === 0) {
+      setUsernameError('');
+      setUsernameAvailable(null);
+    }
   };
 
   const handleSubmit = async (e) => {

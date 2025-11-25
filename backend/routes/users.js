@@ -3,6 +3,28 @@ const User = require('../models/User');
 const auth = require('../middleware/auth');
 const router = express.Router();
 
+// Check username availability (public endpoint for registration)
+router.post('/check-username', async (req, res) => {
+  try {
+    const { username } = req.body;
+    
+    if (!username || username.trim().length < 3) {
+      return res.status(400).json({ 
+        available: false, 
+        message: 'Username must be at least 3 characters' 
+      });
+    }
+
+    const user = await User.findOne({ username: username.trim() });
+    res.json({ 
+      available: !user,
+      message: user ? 'Username is already taken' : 'Username is available'
+    });
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+});
+
 // Get online users count
 router.get('/online', auth, async (req, res) => {
   try {

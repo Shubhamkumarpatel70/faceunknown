@@ -2,6 +2,7 @@ import React, { useState, useContext, useEffect } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import axios from 'axios';
 import AuthContext from '../context/AuthContext';
+import API_BASE_URL from '../config/api';
 import './Auth.css';
 
 const Login = () => {
@@ -38,7 +39,13 @@ const Login = () => {
     setError('');
 
     try {
-      const response = await axios.post(`${API_BASE_URL}/api/auth/login`, formData);
+      const url = API_BASE_URL ? `${API_BASE_URL}/api/auth/login` : '/api/auth/login';
+      const response = await axios.post(url, formData, {
+        headers: {
+          'Content-Type': 'application/json'
+        }
+      });
+      console.log('Login successful:', response.data);
       login(response.data.token, response.data.user);
       
       // Check profile completion
