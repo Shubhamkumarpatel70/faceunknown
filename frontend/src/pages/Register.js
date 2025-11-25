@@ -22,7 +22,16 @@ const Register = () => {
   const { login } = useContext(AuthContext);
   const navigate = useNavigate();
   
-  const usernameCheckTimeoutRef = React.useRef(null);
+  const usernameCheckTimeoutRef = useRef(null);
+  
+  // Cleanup timeout on unmount
+  useEffect(() => {
+    return () => {
+      if (usernameCheckTimeoutRef.current) {
+        clearTimeout(usernameCheckTimeoutRef.current);
+      }
+    };
+  }, []);
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -120,17 +129,31 @@ const Register = () => {
         <form onSubmit={handleSubmit} className="auth-form">
           <div className="form-group">
             <label>Username</label>
-            <input
-              type="text"
-              name="username"
-              className="input"
-              value={formData.username}
-              onChange={handleChange}
-              required
-              minLength={3}
-              maxLength={20}
-              placeholder="Choose a username"
-            />
+            <div className="username-input-wrapper">
+              <input
+                type="text"
+                name="username"
+                className={`input ${usernameAvailable === false ? 'input-error' : usernameAvailable === true ? 'input-success' : ''}`}
+                value={formData.username}
+                onChange={handleChange}
+                required
+                minLength={3}
+                maxLength={20}
+                placeholder="Choose a username"
+              />
+              {checkingUsername && (
+                <span className="username-checking">Checking...</span>
+              )}
+              {usernameAvailable === true && !checkingUsername && (
+                <span className="username-available">✓ Available</span>
+              )}
+              {usernameAvailable === false && !checkingUsername && (
+                <span className="username-taken">✗ Taken</span>
+              )}
+            </div>
+            {usernameError && (
+              <div className="field-error">{usernameError}</div>
+            )}
           </div>
           
           <div className="form-group">
