@@ -194,26 +194,49 @@ const VideoChat = () => {
     // Handle remote stream
     pc.ontrack = (event) => {
       console.log('Received remote track:', event.track.kind, event.streams);
+      
+      // Get or create remote stream
+      let remoteStream = null;
       if (event.streams && event.streams.length > 0) {
-        const remoteStream = event.streams[0];
-        console.log('Setting remote stream:', remoteStream);
-        if (remoteVideoRef.current) {
-          remoteVideoRef.current.srcObject = remoteStream;
-          // Force video element to play
-          remoteVideoRef.current.play().catch(err => {
-            console.error('Error playing remote video:', err);
-          });
-        }
+        remoteStream = event.streams[0];
       } else if (event.track) {
         // Fallback: create a new stream from the track
-        const remoteStream = new MediaStream([event.track]);
-        console.log('Creating stream from track:', remoteStream);
-        if (remoteVideoRef.current) {
+        remoteStream = new MediaStream([event.track]);
+      }
+      
+      if (remoteStream && remoteVideoRef.current) {
+        // If we already have a stream, add the new track to it
+        if (remoteVideoRef.current.srcObject) {
+          const existingStream = remoteVideoRef.current.srcObject;
+          // Check if track already exists
+          const trackExists = existingStream.getTracks().some(t => 
+            t.id === event.track.id && t.kind === event.track.kind
+          );
+          if (!trackExists) {
+            existingStream.addTrack(event.track);
+            console.log('Added track to existing stream:', event.track.kind);
+          }
+        } else {
+          // Set new stream
           remoteVideoRef.current.srcObject = remoteStream;
-          remoteVideoRef.current.play().catch(err => {
-            console.error('Error playing remote video:', err);
-          });
+          console.log('Setting new remote stream:', remoteStream);
         }
+        
+        // Ensure audio is enabled and not muted
+        remoteVideoRef.current.muted = false;
+        remoteVideoRef.current.volume = 1.0;
+        
+        // Force video element to play
+        remoteVideoRef.current.play().catch(err => {
+          console.error('Error playing remote video:', err);
+        });
+        
+        // Log audio tracks
+        const audioTracks = remoteStream.getAudioTracks();
+        console.log('Remote audio tracks:', audioTracks.length);
+        audioTracks.forEach(track => {
+          console.log('Audio track:', track.id, 'enabled:', track.enabled, 'muted:', track.muted);
+        });
       }
     };
 
@@ -668,6 +691,8 @@ const VideoChat = () => {
                   ref={remoteVideoRef}
                   autoPlay
                   playsInline
+                  muted={false}
+                  volume={1.0}
                   className="video-element"
                 />
               ) : (
