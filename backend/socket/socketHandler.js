@@ -139,13 +139,31 @@ const handleSocketConnection = (io) => {
   });
 };
 
-const matchUsers = (socket, io) => {
+const matchUsers = async (socket, io) => {
   // If there's a waiting user, match them
   if (waitingQueue.length > 0 && waitingQueue[0] !== socket.id) {
     const partnerSocketId = waitingQueue.shift();
     const partnerSocket = io.sockets.sockets.get(partnerSocketId);
 
     if (partnerSocket && partnerSocket.userId) {
+      // Fetch user details for both users
+      const User = require('../models/User');
+      let partnerName = 'Partner';
+      let userName = 'User';
+      
+      try {
+        const partnerUser = await User.findById(partnerSocket.userId).select('name username');
+        if (partnerUser) {
+          partnerName = partnerUser.name || partnerUser.username || 'Partner';
+        }
+        const currentUser = await User.findById(socket.userId).select('name username');
+        if (currentUser) {
+          userName = currentUser.name || currentUser.username || 'User';
+        }
+      } catch (error) {
+        console.error('Error fetching user names:', error);
+      }
+
       // Create connection
       activeConnections.set(socket.id, {
         userId: socket.userId,
@@ -166,15 +184,17 @@ const matchUsers = (socket, io) => {
       // This prevents both users from creating offers simultaneously
       const isOfferer = socket.id < partnerSocketId;
 
-      // Notify both users, with offerer flag
+      // Notify both users, with offerer flag and partner name
       socket.emit('matched', { 
         partnerId: partnerSocket.userId, 
         partnerSocketId: partnerSocketId,
+        partnerName: partnerName,
         isOfferer: isOfferer
       });
       partnerSocket.emit('matched', { 
         partnerId: socket.userId, 
         partnerSocketId: socket.id,
+        partnerName: userName,
         isOfferer: !isOfferer
       });
     } else {

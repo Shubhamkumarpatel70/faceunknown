@@ -22,6 +22,7 @@ const VideoChat = () => {
   const [isRestricted, setIsRestricted] = useState(false);
   const [restrictionTime, setRestrictionTime] = useState(0);
   const [partnerId, setPartnerId] = useState(null);
+  const [partnerName, setPartnerName] = useState(null);
   const [reportSuccess, setReportSuccess] = useState('');
   const [reportError, setReportError] = useState('');
 
@@ -197,7 +198,7 @@ const VideoChat = () => {
     return pc;
   };
 
-  const handleMatched = async ({ partnerId, partnerSocketId, isOfferer = true }) => {
+  const handleMatched = async ({ partnerId, partnerSocketId, partnerName, isOfferer = true }) => {
     try {
       setMatched(true);
       setPartnerLeft(false);
@@ -205,6 +206,21 @@ const VideoChat = () => {
       setMessages([]); // Reset chat when matched with new user
       setMessageInput('');
       setPartnerId(partnerId);
+      
+      // Fetch partner's name if not provided
+      if (partnerName) {
+        setPartnerName(partnerName);
+      } else if (partnerId) {
+        try {
+          const response = await axios.get(`${API_BASE_URL}/api/users/${partnerId}`, {
+            headers: { Authorization: `Bearer ${localStorage.getItem('token')}` }
+          });
+          setPartnerName(response.data.name || response.data.username || 'Partner');
+        } catch (error) {
+          console.error('Error fetching partner name:', error);
+          setPartnerName('Partner');
+        }
+      }
 
       // Store partner socket ID and partner ID
       socketRef.current.partnerSocketId = partnerSocketId;
@@ -337,6 +353,7 @@ const VideoChat = () => {
     setMessages([]); // Reset chat
     setMessageInput('');
     setPartnerId(null);
+    setPartnerName(null);
     if (socketRef.current) {
       socketRef.current.partnerId = null;
     }
@@ -560,7 +577,7 @@ const VideoChat = () => {
                 playsInline
                 className="video-element"
               />
-              <div className="video-label">You</div>
+              <div className="video-label">{user?.name || user?.username || 'You'}</div>
               <div className="video-logo">
                 <span className="logo logo-tiny">FaceUnknown</span>
               </div>
@@ -602,7 +619,7 @@ const VideoChat = () => {
                   <p>Waiting for partner...</p>
                 </div>
               )}
-              <div className="video-label">Partner</div>
+              <div className="video-label">{partnerName || 'Partner'}</div>
               <div className="video-logo">
                 <span className="logo logo-tiny">FaceUnknown</span>
               </div>
