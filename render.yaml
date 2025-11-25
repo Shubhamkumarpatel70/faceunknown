@@ -1,12 +1,12 @@
 services:
-  # Backend Service
+  # Combined Frontend + Backend Service
   - type: web
-    name: faceunknown-backend
+    name: faceunknown
     env: node
     region: oregon
     plan: free
-    buildCommand: cd backend && npm install
-    startCommand: cd backend && node server.js
+    buildCommand: npm run install-all && npm run build
+    startCommand: npm start
     envVars:
       - key: NODE_ENV
         value: production
@@ -17,17 +17,4 @@ services:
       - key: JWT_SECRET
         sync: false
       - key: CORS_ORIGIN
-        value: https://faceunknown-frontend.onrender.com
-
-  # Frontend Service
-  - type: web
-    name: faceunknown-frontend
-    env: static
-    region: oregon
-    plan: free
-    buildCommand: cd frontend && npm install && npm run build
-    staticPublishPath: frontend/build
-    envVars:
-      - key: REACT_APP_API_URL
-        value: https://faceunknown-backend.onrender.com
-
+        value: https://faceunknown.onrender.com

@@ -13,136 +13,86 @@
 4. Whitelist your IP (or use 0.0.0.0/0 for Render)
 5. Get your connection string (MONGODB_URI)
 
-## Step 2: Deploy Backend on Render
+## Step 2: Deploy on Render (Single Service)
+
+Since both frontend and backend are deployed together, you only need to create ONE service:
 
 1. Go to [Render Dashboard](https://dashboard.render.com)
 2. Click **"New +"** → **"Web Service"**
 3. Connect your GitHub repository: `Shubhamkumarpatel70/faceunknown`
 4. Configure the service:
-   - **Name**: `faceunknown-backend`
+   - **Name**: `faceunknown`
    - **Environment**: `Node`
    - **Region**: Choose closest to you
    - **Branch**: `main`
-   - **Root Directory**: `backend`
-   - **Build Command**: `npm install`
-   - **Start Command**: `node server.js`
+   - **Root Directory**: Leave empty (root)
+   - **Build Command**: `npm run install-all && npm run build`
+   - **Start Command**: `npm start`
    - **Plan**: Free (or choose paid for better performance)
 
 5. Add Environment Variables:
    - `NODE_ENV` = `production`
-   - `PORT` = `5000`
+   - `PORT` = `5000` (or leave default)
    - `MONGODB_URI` = Your MongoDB connection string
    - `JWT_SECRET` = A random secret string (generate one)
-   - `CORS_ORIGIN` = Your frontend URL (update after deploying frontend)
+   - `CORS_ORIGIN` = Your Render service URL (update after deployment)
 
 6. Click **"Create Web Service"**
 7. Wait for deployment to complete
-8. Copy the service URL (e.g., `https://faceunknown-backend.onrender.com`)
+8. Copy the service URL (e.g., `https://faceunknown.onrender.com`)
 
-## Step 3: Deploy Frontend on Render
+## Step 3: Update Environment Variables
 
-1. In Render Dashboard, click **"New +"** → **"Static Site"**
-2. Connect your GitHub repository: `Shubhamkumarpatel70/faceunknown`
-3. Configure the service:
-   - **Name**: `faceunknown-frontend`
-   - **Branch**: `main`
-   - **Root Directory**: `frontend`
-   - **Build Command**: `npm install && npm run build`
-   - **Publish Directory**: `build`
-   - **Plan**: Free
+After deployment, update the `CORS_ORIGIN` environment variable to match your Render service URL:
+- Go to your service settings
+- Update `CORS_ORIGIN` to your service URL
+- Save and redeploy
 
-4. Add Environment Variable:
-   - `REACT_APP_API_URL` = Your backend URL (e.g., `https://faceunknown-backend.onrender.com`)
+## Step 4: Verify Deployment
 
-5. Click **"Create Static Site"**
-6. Wait for deployment to complete
-
-## Step 4: Update Backend CORS
-
-1. Go back to your backend service on Render
-2. Update the `CORS_ORIGIN` environment variable to your frontend URL
-3. Save and redeploy
-
-## Step 5: Update Frontend API URLs
-
-The frontend code uses `http://localhost:5000` for API calls. You need to update these to use the environment variable.
-
-### Files to Update:
-- `frontend/src/pages/Login.js`
-- `frontend/src/pages/Register.js`
-- `frontend/src/pages/Dashboard.js`
-- `frontend/src/pages/VideoChat.js`
-- `frontend/src/pages/ProfileCompletion.js`
-- `frontend/src/components/ManageUsers.js`
-- `frontend/src/components/Statistics.js`
-- `frontend/src/components/RestrictedWords.js`
-- `frontend/src/components/ReportedUsers.js`
-- `frontend/src/components/ReportsRemovalRequest.js`
-- `frontend/src/context/AuthContext.js`
-
-Replace all instances of:
-```javascript
-'http://localhost:5000'
-```
-
-With:
-```javascript
-process.env.REACT_APP_API_URL || 'http://localhost:5000'
-```
-
-## Step 6: Update Socket.IO Connection
-
-In `frontend/src/pages/VideoChat.js`, update the socket connection:
-
-```javascript
-const newSocket = io(process.env.REACT_APP_API_URL || 'http://localhost:5000', {
-  // ... existing options
-});
-```
-
-## Step 7: Commit and Push Changes
-
-After updating the API URLs, commit and push:
-
-```bash
-git add .
-git commit -m "Update API URLs for production deployment"
-git push origin main
-```
-
-Render will automatically redeploy your services.
-
-## Step 8: Verify Deployment
-
-1. Visit your frontend URL
+1. Visit your Render service URL
 2. Test registration and login
 3. Test video chat functionality
-4. Check backend logs in Render dashboard for any errors
+4. Check Render logs for any errors
+
+## How It Works
+
+- **Build Process**: 
+  - Installs dependencies for root, backend, and frontend
+  - Builds the React frontend
+  - Backend is ready to serve
+
+- **Runtime**:
+  - Backend serves API routes at `/api/*`
+  - Backend serves React build files for all other routes
+  - Socket.IO handles WebRTC signaling
 
 ## Troubleshooting
 
-### Backend Issues:
+### Build Issues:
+- Check that all dependencies are listed in package.json files
+- Verify build command completes successfully
+- Check Render build logs for errors
+
+### Runtime Issues:
 - Check MongoDB connection string is correct
 - Verify all environment variables are set
 - Check Render logs for errors
-
-### Frontend Issues:
-- Verify `REACT_APP_API_URL` is set correctly
-- Check browser console for CORS errors
-- Ensure backend CORS_ORIGIN includes frontend URL
+- Ensure PORT is set correctly (Render sets this automatically)
 
 ### Socket.IO Issues:
 - Ensure WebSocket connections are allowed on Render
-- Check that both services are using HTTPS
+- Check CORS_ORIGIN includes your service URL
+- Verify Socket.IO is properly configured
 
 ## Notes:
 - Free tier services on Render spin down after 15 minutes of inactivity
 - First request after spin-down may take 30-60 seconds
 - Consider upgrading to paid plan for better performance
 - MongoDB Atlas free tier has limitations (512MB storage)
+- All API calls should use the same domain (no CORS issues)
 
 ## Support
 For issues, check:
 - Render documentation: https://render.com/docs
 - MongoDB Atlas documentation: https://docs.atlas.mongodb.com
-
