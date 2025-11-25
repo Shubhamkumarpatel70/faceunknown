@@ -434,6 +434,7 @@ const VideoChat = () => {
       socketRef.current.emit('skip');
     }
     setPartnerId(null);
+    setPartnerName(null);
     if (socketRef.current) {
       socketRef.current.partnerId = null;
     }
