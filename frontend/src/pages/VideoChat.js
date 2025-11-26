@@ -268,9 +268,15 @@ const VideoChat = () => {
 
     const pc = new RTCPeerConnection(servers);
 
-    // Add local stream tracks
+    // Add local stream tracks with current enabled state
     if (localStreamRef.current) {
       localStreamRef.current.getTracks().forEach(track => {
+        // Ensure track state matches current mic/camera state
+        if (track.kind === 'audio') {
+          track.enabled = micEnabled;
+        } else if (track.kind === 'video') {
+          track.enabled = cameraEnabled;
+        }
         pc.addTrack(track, localStreamRef.current);
       });
     }
@@ -751,7 +757,19 @@ const VideoChat = () => {
       const audioTrack = localStreamRef.current.getAudioTracks()[0];
       if (audioTrack) {
         const newStatus = !micEnabled;
+        // Disable/enable the audio track - this will stop/start audio transmission
         audioTrack.enabled = newStatus;
+        
+        // Also update the peer connection tracks if it exists
+        if (peerConnectionRef.current) {
+          const senders = peerConnectionRef.current.getSenders();
+          senders.forEach(sender => {
+            if (sender.track && sender.track.kind === 'audio') {
+              sender.track.enabled = newStatus;
+            }
+          });
+        }
+        
         setMicEnabled(newStatus);
         
         // Notify partner about mic status change
@@ -886,11 +904,11 @@ const VideoChat = () => {
           </div>
         )}
 
-        <div className="flex flex-col lg:flex-row gap-4 sm:gap-5 md:gap-6 lg:gap-8 xl:gap-10 w-full max-w-[1600px] xl:max-w-[1800px] items-start">
+        <div className="flex flex-col lg:flex-row gap-4 sm:gap-5 md:gap-6 lg:gap-8 xl:gap-10 w-full max-w-[1400px] 2xl:max-w-[1600px] items-start mx-auto">
           <div className="flex-1 w-full relative">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-2.5 sm:gap-3 md:gap-4 lg:gap-5 xl:gap-6 w-full">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-2.5 sm:gap-3 md:gap-4 lg:gap-5 xl:gap-6 w-full max-w-[1200px] 2xl:max-w-[1400px] mx-auto">
               {/* Local Video */}
-              <div className="relative bg-gradient-to-br from-secondary/70 to-secondary/50 backdrop-blur-lg rounded-2xl sm:rounded-3xl md:rounded-[1.5rem] lg:rounded-[2rem] overflow-hidden border-2 md:border-[3px] border-text/40 shadow-2xl aspect-video min-h-[160px] sm:min-h-[180px] md:min-h-[240px] lg:min-h-[300px] xl:min-h-[360px] transition-all duration-300 hover:border-accent1/50 hover:shadow-[0_20px_60px_rgba(0,0,0,0.3)] md:hover:scale-[1.01]">
+              <div className="relative bg-gradient-to-br from-secondary/70 to-secondary/50 backdrop-blur-lg rounded-2xl sm:rounded-3xl md:rounded-[1.5rem] lg:rounded-[2rem] overflow-hidden border-2 md:border-[3px] border-text/40 shadow-2xl aspect-video min-h-[160px] sm:min-h-[180px] md:min-h-[200px] lg:min-h-[240px] xl:min-h-[280px] 2xl:min-h-[320px] transition-all duration-300 hover:border-accent1/50 hover:shadow-[0_20px_60px_rgba(0,0,0,0.3)] md:hover:scale-[1.01]">
               <video
                 ref={localVideoRef}
                 autoPlay
@@ -953,7 +971,7 @@ const VideoChat = () => {
             </div>
 
               {/* Remote Video */}
-              <div className="relative bg-gradient-to-br from-secondary/70 to-secondary/50 backdrop-blur-lg rounded-2xl sm:rounded-3xl md:rounded-[1.5rem] lg:rounded-[2rem] overflow-hidden border-2 md:border-[3px] border-text/40 shadow-2xl aspect-video min-h-[160px] sm:min-h-[180px] md:min-h-[240px] lg:min-h-[300px] xl:min-h-[360px] transition-all duration-300 hover:border-accent1/50 hover:shadow-[0_20px_60px_rgba(0,0,0,0.3)] md:hover:scale-[1.01]">
+              <div className="relative bg-gradient-to-br from-secondary/70 to-secondary/50 backdrop-blur-lg rounded-2xl sm:rounded-3xl md:rounded-[1.5rem] lg:rounded-[2rem] overflow-hidden border-2 md:border-[3px] border-text/40 shadow-2xl aspect-video min-h-[160px] sm:min-h-[180px] md:min-h-[200px] lg:min-h-[240px] xl:min-h-[280px] 2xl:min-h-[320px] transition-all duration-300 hover:border-accent1/50 hover:shadow-[0_20px_60px_rgba(0,0,0,0.3)] md:hover:scale-[1.01]">
               {matched && !partnerLeft ? (
                 <video
                   ref={remoteVideoRef}
@@ -1014,18 +1032,18 @@ const VideoChat = () => {
             </div>
             {/* Skip Button - Centered between cameras for ALL screen sizes */}
             {matched && !partnerLeft && (
-              <div className="hidden md:block absolute left-1/2 top-1/2 transform -translate-x-1/2 -translate-y-1/2 z-[4] pointer-events-none">
+              <div className="absolute left-1/2 top-1/2 transform -translate-x-1/2 -translate-y-1/2 z-[4] pointer-events-none">
                 <div className="pointer-events-auto">
                   <button
                     onClick={handleSkip}
                     className={`
                       relative flex items-center justify-center gap-1 sm:gap-1.5 md:gap-2 lg:gap-2.5 xl:gap-3
-                      px-3 py-2 sm:px-3.5 sm:py-2.5 md:px-4 md:py-3 lg:px-5 lg:py-3.5 xl:px-6 xl:py-4
+                      px-2.5 py-1.5 sm:px-3 sm:py-2 md:px-3.5 md:py-2.5 lg:px-4 lg:py-3 xl:px-5 xl:py-3.5 2xl:px-6 2xl:py-4
                       bg-gradient-to-r from-accent1 via-accent1 to-accent1/95 
                       hover:from-accent1/95 hover:via-accent1 hover:to-accent1/90
                       text-primary border-2 border-primary/20 
                       rounded-full
-                      text-[9px] sm:text-[10px] md:text-xs lg:text-sm xl:text-base font-semibold 
+                      text-[8px] sm:text-[9px] md:text-[10px] lg:text-xs xl:text-sm 2xl:text-base font-semibold 
                       cursor-pointer transition-all duration-300 
                       uppercase tracking-wider
                       shadow-2xl lg:shadow-[0_20px_50px_rgba(245,158,11,0.4)]
@@ -1042,8 +1060,8 @@ const VideoChat = () => {
                     
                     {/* Content */}
                     <div className="relative flex items-center justify-center gap-1 sm:gap-1.5 lg:gap-2">
-                      <FaForward className="text-xs sm:text-sm md:text-base lg:text-lg xl:text-xl drop-shadow-lg" />
-                      <span className="text-[9px] sm:text-[10px] md:text-xs lg:text-sm xl:text-base font-bold drop-shadow-md">SKIP</span>
+                      <FaForward className="text-[10px] sm:text-xs md:text-sm lg:text-base xl:text-lg 2xl:text-xl drop-shadow-lg" />
+                      <span className="text-[8px] sm:text-[9px] md:text-[10px] lg:text-xs xl:text-sm 2xl:text-base font-bold drop-shadow-md">SKIP</span>
                     </div>
                     
                     {/* Shine effect on hover */}

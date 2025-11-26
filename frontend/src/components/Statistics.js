@@ -21,10 +21,17 @@ const Statistics = () => {
 
   const fetchStats = async () => {
     try {
-      const response = await axios.get(`${API_BASE_URL}/api/users/stats`);
+      const token = localStorage.getItem('token');
+      const response = await axios.get(`${API_BASE_URL}/api/users/stats`, {
+        headers: {
+          Authorization: `Bearer ${token}`
+        }
+      });
       setStats(response.data);
     } catch (error) {
       console.error('Error fetching stats:', error);
+      // Set loading to false even on error
+      setLoading(false);
     } finally {
       setLoading(false);
     }
