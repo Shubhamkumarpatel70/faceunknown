@@ -16,7 +16,7 @@ const ReportedUsers = () => {
 
   const fetchReportedUsers = async () => {
     try {
-      const response = await axios.get('API_BASE_URL/api/reports/reported-users');
+      const response = await axios.get(`${API_BASE_URL}/api/reports/reported-users`);
       setReportedUsers(response.data);
     } catch (error) {
       console.error('Error fetching reported users:', error);
