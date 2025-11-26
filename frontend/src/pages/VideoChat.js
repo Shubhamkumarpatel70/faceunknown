@@ -316,10 +316,31 @@ const VideoChat = () => {
         remoteVideoRef.current.muted = false;
         remoteVideoRef.current.volume = 1.0;
         
-        // Force video element to play
-        remoteVideoRef.current.play().catch(err => {
-          console.error('Error playing remote video:', err);
-        });
+        // Force video element to play with proper error handling
+        const playPromise = remoteVideoRef.current.play();
+        if (playPromise !== undefined) {
+          playPromise
+            .then(() => {
+              // Video is playing successfully
+              console.log('Remote video is playing');
+            })
+            .catch(err => {
+              // Only log if it's not an AbortError (which is expected when srcObject changes)
+              if (err.name !== 'AbortError') {
+                console.error('Error playing remote video:', err);
+              }
+              // Try to play again after a short delay if it's not an AbortError
+              if (err.name !== 'AbortError' && remoteVideoRef.current) {
+                setTimeout(() => {
+                  if (remoteVideoRef.current && remoteVideoRef.current.srcObject) {
+                    remoteVideoRef.current.play().catch(() => {
+                      // Silently ignore if it fails again
+                    });
+                  }
+                }, 100);
+              }
+            });
+        }
         
         // Log audio tracks
         const audioTracks = remoteStream.getAudioTracks();
@@ -577,6 +598,18 @@ const VideoChat = () => {
       remoteVideoRef.current.srcObject.getTracks().forEach(track => track.stop());
       remoteVideoRef.current.srcObject = null;
     }
+    
+    // Clear partner socket ID
+    if (socketRef.current) {
+      socketRef.current.partnerSocketId = null;
+      socketRef.current.partnerId = null;
+      
+      // Re-join to search for a new match
+      const token = localStorage.getItem('token');
+      if (token) {
+        socketRef.current.emit('join', { userId: user.id, token });
+      }
+    }
   };
 
   const handlePartnerLeft = () => {
@@ -675,8 +708,32 @@ const VideoChat = () => {
     setPartnerCountryFlag('🌍');
     if (socketRef.current) {
       socketRef.current.partnerId = null;
+      socketRef.current.partnerSocketId = null;
     }
-    handlePartnerSkipped();
+    
+    // Clean up peer connection and remote stream
+    if (peerConnectionRef.current) {
+      peerConnectionRef.current.close();
+      peerConnectionRef.current = null;
+    }
+    if (remoteVideoRef.current?.srcObject) {
+      remoteVideoRef.current.srcObject.getTracks().forEach(track => track.stop());
+      remoteVideoRef.current.srcObject = null;
+    }
+    
+    // Reset state
+    setMatched(false);
+    setConnecting(true);
+    setMessages([]);
+    setMessageInput('');
+    setPartnerCameraEnabled(true);
+    setPartnerMicEnabled(true);
+    
+    // Re-join to search for a new match
+    const token = localStorage.getItem('token');
+    if (socketRef.current && token) {
+      socketRef.current.emit('join', { userId: user.id, token });
+    }
   };
 
   const handleLeave = async () => {
@@ -757,20 +814,38 @@ const VideoChat = () => {
       const audioTrack = localStreamRef.current.getAudioTracks()[0];
       if (audioTrack) {
         const newStatus = !micEnabled;
-        // Disable/enable the audio track - this will stop/start audio transmission
+        // Update state immediately for UI responsiveness
+        setMicEnabled(newStatus);
+        
+        // Disable/enable the audio track immediately
         audioTrack.enabled = newStatus;
         
-        // Also update the peer connection tracks if it exists
+        // Update peer connection senders immediately for real-time muting
         if (peerConnectionRef.current) {
           const senders = peerConnectionRef.current.getSenders();
-          senders.forEach(sender => {
+          senders.forEach(async (sender) => {
             if (sender.track && sender.track.kind === 'audio') {
+              // Update track enabled state immediately
               sender.track.enabled = newStatus;
+              
+              // Replace track with itself to force immediate update in WebRTC connection
+              // This ensures the change is applied instantly
+              try {
+                await sender.replaceTrack(audioTrack);
+                // Ensure the track state is maintained after replace
+                if (sender.track) {
+                  sender.track.enabled = newStatus;
+                }
+              } catch (err) {
+                console.error('Error replacing audio track:', err);
+                // Fallback: just ensure track is disabled/enabled
+                if (sender.track) {
+                  sender.track.enabled = newStatus;
+                }
+              }
             }
           });
         }
-        
-        setMicEnabled(newStatus);
         
         // Notify partner about mic status change
         if (socketRef.current && socketRef.current.partnerSocketId) {
