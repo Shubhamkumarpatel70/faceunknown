@@ -28,8 +28,8 @@ const VideoChat = () => {
   const getCountryFlag = (countryName) => {
     if (!countryName || countryName.trim() === '') return '🌍';
     
-    // Normalize country name: trim and convert to title case for matching
-    const normalized = countryName.trim();
+    // Normalize country name: trim, remove extra spaces, and handle common variations
+    let normalized = countryName.trim().replace(/\s+/g, ' ');
     
     const countryFlags = {
       // A
@@ -74,17 +74,17 @@ const VideoChat = () => {
       'United States': '🇺🇸', 'United States of America': '🇺🇸',
       // V
       'Vietnam': '🇻🇳',
-      // Common variations
+      // Common variations (case-insensitive will handle these)
       'USA': '🇺🇸', 'US': '🇺🇸', 'UK': '🇬🇧', 'UAE': '🇦🇪',
       'America': '🇺🇸', 'American': '🇺🇸'
     };
     
-    // Try exact match first
+    // Try exact match first (case-sensitive)
     if (countryFlags[normalized]) {
       return countryFlags[normalized];
     }
     
-    // Try case-insensitive match
+    // Try case-insensitive exact match
     const normalizedLower = normalized.toLowerCase();
     for (const [key, flag] of Object.entries(countryFlags)) {
       if (key.toLowerCase() === normalizedLower) {
@@ -92,15 +92,26 @@ const VideoChat = () => {
       }
     }
     
-    // Try partial match (e.g., "United States of America" matches "United States")
+    // Try partial match (check if normalized contains key or vice versa)
     for (const [key, flag] of Object.entries(countryFlags)) {
-      if (normalizedLower.includes(key.toLowerCase()) || key.toLowerCase().includes(normalizedLower)) {
+      const keyLower = key.toLowerCase();
+      if (normalizedLower.includes(keyLower) || keyLower.includes(normalizedLower)) {
         return flag;
       }
     }
     
-    // If no match found, return globe
-    console.log('Country flag not found for:', normalized);
+    // Try word-by-word matching for multi-word countries
+    const words = normalizedLower.split(/\s+/);
+    for (const [key, flag] of Object.entries(countryFlags)) {
+      const keyWords = key.toLowerCase().split(/\s+/);
+      // Check if all words in key are present in normalized
+      if (keyWords.every(word => normalizedLower.includes(word))) {
+        return flag;
+      }
+    }
+    
+    // If no match found, log and return globe
+    console.warn('Country flag not found for:', countryName, '(normalized:', normalized, ')');
     return '🌍';
   };
   const [isRestricted, setIsRestricted] = useState(false);
@@ -139,11 +150,35 @@ const VideoChat = () => {
   // Set country flag based on user's country from database
   useEffect(() => {
     if (user?.country) {
-      setCountryFlag(getCountryFlag(user.country));
+      const flag = getCountryFlag(user.country);
+      setCountryFlag(flag);
+      console.log('User country:', user.country, 'Flag:', flag);
     } else {
-      setCountryFlag('🌍');
+      // If user object exists but country is missing, try to fetch it
+      if (user && !user.country) {
+        const fetchUserCountry = async () => {
+          try {
+            const response = await axios.get(`${API_BASE_URL}/api/auth/me`, {
+              headers: { Authorization: `Bearer ${localStorage.getItem('token')}` }
+            });
+            if (response.data.user?.country) {
+              const flag = getCountryFlag(response.data.user.country);
+              setCountryFlag(flag);
+              console.log('Fetched user country:', response.data.user.country, 'Flag:', flag);
+            } else {
+              setCountryFlag('🌍');
+            }
+          } catch (error) {
+            console.error('Error fetching user country:', error);
+            setCountryFlag('🌍');
+          }
+        };
+        fetchUserCountry();
+      } else {
+        setCountryFlag('🌍');
+      }
     }
-  }, [user?.country]);
+  }, [user?.country, user]);
         
   // Monitor partner's camera and mic status
   useEffect(() => {
@@ -189,11 +224,56 @@ const VideoChat = () => {
     const socketUrl = process.env.NODE_ENV === 'production' 
       ? window.location.origin 
       : API_BASE_URL;
+    
+    console.log('Connecting to socket at:', socketUrl);
+    
     const newSocket = io(socketUrl, {
-      auth: { token }
+      auth: { token },
+      transports: ['websocket', 'polling'], // Try websocket first, fallback to polling
+      reconnection: true,
+      reconnectionDelay: 1000,
+      reconnectionDelayMax: 5000,
+      reconnectionAttempts: 5,
+      timeout: 20000
     });
 
     socketRef.current = newSocket;
+    
+    // Socket connection event handlers
+    newSocket.on('connect', () => {
+      console.log('Socket connected successfully:', newSocket.id);
+      setConnecting(false);
+    });
+
+    newSocket.on('connect_error', (error) => {
+      console.error('Socket connection error:', error);
+      console.error('Attempting to connect to:', socketUrl);
+      // Show user-friendly error message
+      if (error.message.includes('ERR_CONNECTION_REFUSED') || error.message.includes('Failed to fetch')) {
+        alert('Cannot connect to server. Please make sure the backend server is running on port 5000.');
+      }
+    });
+
+    newSocket.on('disconnect', (reason) => {
+      console.log('Socket disconnected:', reason);
+      if (reason === 'io server disconnect') {
+        // Server disconnected the socket, try to reconnect manually
+        newSocket.connect();
+      }
+    });
+
+    newSocket.on('reconnect', (attemptNumber) => {
+      console.log('Socket reconnected after', attemptNumber, 'attempts');
+    });
+
+    newSocket.on('reconnect_error', (error) => {
+      console.error('Socket reconnection error:', error);
+    });
+
+    newSocket.on('reconnect_failed', () => {
+      console.error('Socket reconnection failed after all attempts');
+      alert('Failed to reconnect to server. Please refresh the page.');
+    });
     
     // Set connection timeout - show modal if no match in 10 seconds
     if (connectionTimeoutRef.current) {
@@ -216,8 +296,15 @@ const VideoChat = () => {
           localVideoRef.current.srcObject = stream;
         }
 
-        // Join chat
-        newSocket.emit('join', { userId: user.id, token });
+        // Wait for socket to be connected before joining
+        if (newSocket.connected) {
+          newSocket.emit('join', { userId: user.id, token });
+        } else {
+          // Wait for connection before joining
+          newSocket.once('connect', () => {
+            newSocket.emit('join', { userId: user.id, token });
+          });
+        }
 
         // Socket event handlers
         newSocket.on('matched', handleMatched);
@@ -255,7 +342,10 @@ const VideoChat = () => {
       if (peerConnectionRef.current) {
         peerConnectionRef.current.close();
       }
-      newSocket.close();
+      if (newSocket) {
+        newSocket.removeAllListeners();
+        newSocket.close();
+      }
     };
   }, [user.id]);
 
@@ -1000,12 +1090,9 @@ const VideoChat = () => {
                     zIndex: 0
                   }}
                 />
-                {/* User Country Flag with Name - Top Left */}
-                <div className="absolute top-2 left-2 sm:top-3 sm:left-3 md:top-4 md:left-4 lg:top-5 lg:left-5 xl:top-6 xl:left-6 flex items-center gap-1 sm:gap-1.5 md:gap-2 bg-secondary/80 backdrop-blur-md rounded-md sm:rounded-lg md:rounded-xl px-1.5 py-1 sm:px-2 sm:py-1.5 md:px-2.5 md:py-2 border-2 border-text/30 shadow-md hover:shadow-lg transition-all duration-300 hover:scale-110 cursor-default z-[3]" title={user?.country || 'Country'}>
-                  <span className="text-base sm:text-lg md:text-xl lg:text-2xl xl:text-3xl">{countryFlag}</span>
-                  {user?.country && (
-                    <span className="text-[8px] sm:text-[9px] md:text-[10px] lg:text-xs xl:text-sm font-semibold text-text/90 truncate max-w-[60px] sm:max-w-[80px] md:max-w-[100px] lg:max-w-[120px]">{user.country}</span>
-                  )}
+                {/* User Country Flag - Top Left */}
+                <div className="absolute top-2 left-2 sm:top-3 sm:left-3 md:top-4 md:left-4 lg:top-5 lg:left-5 xl:top-6 xl:left-6 flex items-center justify-center bg-secondary/80 backdrop-blur-md rounded-md sm:rounded-lg md:rounded-xl px-2 py-1.5 sm:px-2.5 sm:py-2 md:px-3 md:py-2.5 lg:px-3.5 lg:py-3 xl:px-4 xl:py-3.5 border-2 border-text/30 shadow-md hover:shadow-lg transition-all duration-300 hover:scale-110 cursor-default z-[3]" title={user?.country || 'Country'}>
+                  <span className="text-xl sm:text-2xl md:text-3xl lg:text-4xl xl:text-5xl">{countryFlag}</span>
                 </div>
                 <div className="absolute bottom-2 left-2 sm:bottom-3 sm:left-3 md:bottom-4 md:left-4 lg:bottom-5 lg:left-5 xl:bottom-6 xl:left-6 bg-gradient-to-r from-accent1 to-accent1/90 text-primary px-2 py-1 sm:px-2.5 sm:py-1.5 md:px-3 md:py-2 lg:px-4 lg:py-2.5 xl:px-5 xl:py-3 rounded-md sm:rounded-lg md:rounded-xl lg:rounded-2xl text-[9px] sm:text-[10px] md:text-xs lg:text-sm xl:text-base font-bold z-[2] shadow-lg uppercase tracking-wide border border-primary/20">
                 {user?.name || user?.username || 'You'}
@@ -1071,13 +1158,10 @@ const VideoChat = () => {
                     <p className="text-[10px] sm:text-xs md:text-sm lg:text-base xl:text-lg">Waiting for partner...</p>
                 </div>
               )}
-                {/* Partner Country Flag with Name - Top Left */}
+                {/* Partner Country Flag - Top Left */}
                 {matched && !partnerLeft && (
-                  <div className="absolute top-2 left-2 sm:top-3 sm:left-3 md:top-4 md:left-4 lg:top-5 lg:left-5 xl:top-6 xl:left-6 flex items-center gap-1 sm:gap-1.5 md:gap-2 bg-secondary/80 backdrop-blur-md rounded-md sm:rounded-lg md:rounded-xl px-1.5 py-1 sm:px-2 sm:py-1.5 md:px-2.5 md:py-2 border-2 border-text/30 shadow-md hover:shadow-lg transition-all duration-300 hover:scale-110 cursor-default z-[3]" title={partnerCountry || 'Partner Country'}>
-                    <span className="text-base sm:text-lg md:text-xl lg:text-2xl xl:text-3xl">{partnerCountryFlag}</span>
-                    {partnerCountry && (
-                      <span className="text-[8px] sm:text-[9px] md:text-[10px] lg:text-xs xl:text-sm font-semibold text-text/90 truncate max-w-[60px] sm:max-w-[80px] md:max-w-[100px] lg:max-w-[120px]">{partnerCountry}</span>
-                    )}
+                  <div className="absolute top-2 left-2 sm:top-3 sm:left-3 md:top-4 md:left-4 lg:top-5 lg:left-5 xl:top-6 xl:left-6 flex items-center justify-center bg-secondary/80 backdrop-blur-md rounded-md sm:rounded-lg md:rounded-xl px-2 py-1.5 sm:px-2.5 sm:py-2 md:px-3 md:py-2.5 lg:px-3.5 lg:py-3 xl:px-4 xl:py-3.5 border-2 border-text/30 shadow-md hover:shadow-lg transition-all duration-300 hover:scale-110 cursor-default z-[3]" title={partnerCountry || 'Partner Country'}>
+                    <span className="text-xl sm:text-2xl md:text-3xl lg:text-4xl xl:text-5xl">{partnerCountryFlag}</span>
                   </div>
                 )}
                 {/* Partner Camera Off Message */}
@@ -1105,20 +1189,29 @@ const VideoChat = () => {
             </div>
 
             </div>
-            {/* Skip Button - Centered between cameras for ALL screen sizes */}
+            {/* Skip Button - Perfectly centered between cameras for ALL screen sizes */}
             {matched && !partnerLeft && (
-              <div className="absolute left-1/2 top-1/2 transform -translate-x-1/2 -translate-y-1/2 z-[4] pointer-events-none">
+              <div 
+                className="absolute left-1/2 top-1/2 z-[5] pointer-events-none"
+                style={{ 
+                  position: 'absolute',
+                  left: '50%',
+                  top: '50%',
+                  transform: 'translate(-50%, -50%)',
+                  zIndex: 50
+                }}
+              >
                 <div className="pointer-events-auto">
                   <button
                     onClick={handleSkip}
                     className={`
-                      relative flex items-center justify-center gap-1 sm:gap-1.5 md:gap-2 lg:gap-2.5 xl:gap-3
-                      px-2.5 py-1.5 sm:px-3 sm:py-2 md:px-3.5 md:py-2.5 lg:px-4 lg:py-3 xl:px-5 xl:py-3.5 2xl:px-6 2xl:py-4
+                      relative flex items-center justify-center gap-1.5 sm:gap-2 md:gap-2.5 lg:gap-3 xl:gap-3.5
+                      px-4 py-2.5 sm:px-5 sm:py-3 md:px-6 md:py-3.5 lg:px-7 lg:py-4 xl:px-8 xl:py-5 2xl:px-10 2xl:py-6
                       bg-gradient-to-r from-accent1 via-accent1 to-accent1/95 
                       hover:from-accent1/95 hover:via-accent1 hover:to-accent1/90
                       text-primary border-2 border-primary/20 
                       rounded-full
-                      text-[8px] sm:text-[9px] md:text-[10px] lg:text-xs xl:text-sm 2xl:text-base font-semibold 
+                      text-[10px] sm:text-xs md:text-sm lg:text-base xl:text-lg 2xl:text-xl font-extrabold 
                       cursor-pointer transition-all duration-300 
                       uppercase tracking-wider
                       shadow-2xl lg:shadow-[0_20px_50px_rgba(245,158,11,0.4)]
@@ -1127,6 +1220,7 @@ const VideoChat = () => {
                       active:scale-105 lg:active:scale-115
                       animate-[skipPulse_2s_ease-in-out_infinite,skipFloat_3s_ease-in-out_infinite]
                       backdrop-blur-sm
+                      min-w-[70px] sm:min-w-[80px] md:min-w-[90px] lg:min-w-[100px] xl:min-w-[110px] 2xl:min-w-[120px]
                     `}
                     title="Skip to next partner"
                   >
@@ -1134,9 +1228,9 @@ const VideoChat = () => {
                     <div className="absolute inset-0 rounded-full bg-gradient-to-r from-accent1/50 to-accent1/30 blur-xl lg:blur-2xl -z-10 opacity-75 lg:opacity-90"></div>
                     
                     {/* Content */}
-                    <div className="relative flex items-center justify-center gap-1 sm:gap-1.5 lg:gap-2">
-                      <FaForward className="text-[10px] sm:text-xs md:text-sm lg:text-base xl:text-lg 2xl:text-xl drop-shadow-lg" />
-                      <span className="text-[8px] sm:text-[9px] md:text-[10px] lg:text-xs xl:text-sm 2xl:text-base font-bold drop-shadow-md">SKIP</span>
+                    <div className="relative flex items-center justify-center gap-2 sm:gap-2.5 lg:gap-3">
+                      <FaForward className="text-sm sm:text-base md:text-lg lg:text-xl xl:text-2xl 2xl:text-3xl drop-shadow-lg" />
+                      <span className="text-[10px] sm:text-xs md:text-sm lg:text-base xl:text-lg 2xl:text-xl font-extrabold drop-shadow-md">SKIP</span>
                     </div>
                     
                     {/* Shine effect on hover */}
